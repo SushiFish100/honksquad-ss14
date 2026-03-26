@@ -4,6 +4,7 @@ using Content.Server.Construction;
 using Content.Server.Construction.Components;
 using Content.Shared.Storage.Components;
 using Content.Shared.Storage.EntitySystems;
+using Content.Shared.Tools.Systems;
 using Robust.Server.GameObjects;
 using Robust.Shared.Map;
 
@@ -21,6 +22,8 @@ public sealed class EntityStorageSystem : SharedEntityStorageSystem
         base.Initialize();
 
         SubscribeLocalEvent<EntityStorageComponent, MapInitEvent>(OnMapInit);
+
+        SubscribeLocalEvent<EntityStorageComponent, WeldableChangedEvent>(OnWeldChanged);
 
         SubscribeLocalEvent<InsideEntityStorageComponent, InhaleLocationEvent>(OnInsideInhale);
         SubscribeLocalEvent<InsideEntityStorageComponent, ExhaleLocationEvent>(OnInsideExhale);
@@ -82,6 +85,22 @@ public sealed class EntityStorageSystem : SharedEntityStorageSystem
         }
 
         return null;
+    }
+
+    // NOTE: This only fires on state change, so lockers placed pre-welded in maps
+    // won't become airtight until unwelded and re-welded.
+    private void OnWeldChanged(EntityUid uid, EntityStorageComponent component, ref WeldableChangedEvent args)
+    {
+        if (args.IsWelded)
+        {
+            component.Airtight = true;
+            TakeGas(uid, component);
+        }
+        else
+        {
+            ReleaseGas(uid, component);
+            component.Airtight = false;
+        }
     }
 
     #region Gas mix event handlers
